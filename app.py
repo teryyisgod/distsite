@@ -45,6 +45,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+    init_db()  
 
 # 管理者として履歴を見られるユーザー名
 ADMIN_USERNAMES = {"kenkenken752"}
