@@ -141,6 +141,13 @@ def download_file(filename):
     except FileNotFoundError:
         abort(404)
 
+@app.route("/debug-users")
+def debug_users():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM users").fetchall()
+    conn.close()
+    return "<br>".join([f"{r['id']} | {r['username']} | {r['password']}" for r in rows])
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
