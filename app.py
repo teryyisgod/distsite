@@ -45,9 +45,10 @@ def init_db():
     conn.commit()
     conn.close()
 
-    init_db()  
 
-# 管理者として履歴を見られるユーザー名
+init_db()
+
+
 ADMIN_USERNAMES = {"kenkenken752"}
 
 
@@ -178,6 +179,7 @@ def admin_logs():
     conn.close()
     return render_template("admin_logs.html", logs=rows)
 
+
 @app.route("/admin/users")
 @login_required
 def admin_users():
@@ -193,5 +195,4 @@ def admin_users():
 
 
 if __name__ == "__main__":
-    init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)
