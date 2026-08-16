@@ -1,0 +1,16 @@
+# データベース(テストデータや個人情報を含むため必ず除外)
+site.db
+site.db-journal
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 環境変数ファイル(SECRET_KEYなどを書く場合)
+.env
+
+# OS/エディタ系
+.DS_Store
+.vscode/

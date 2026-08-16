@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}ダウンロード{% endblock %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+    <h2 class="mb-4">{{ username }} さん専用ダウンロードページ</h2>
+    {% if files %}
+        <ul class="list-group">
+            {% for f in files %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ f }}
+                    <a href="{{ url_for('download_file', filename=f) }}" class="btn btn-sm btn-success">ダウンロード</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted">現在公開中のファイルはありません。</p>
+    {% endif %}
+</div>
+{% endblock %}
