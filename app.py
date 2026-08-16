@@ -1,10 +1,12 @@
 import os
 import sqlite3
+from datetime import datetime, timezone
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, abort
 from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
     logout_user, current_user
 )
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "site.db")
@@ -32,11 +34,20 @@ def init_db():
             password_hash TEXT NOT NULL
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS download_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            downloaded_at TEXT NOT NULL
+        )
+    """)
     conn.commit()
     conn.close()
 
 
-init_db()
+# 管理者として履歴を見られるユーザー名
+ADMIN_USERNAMES = {"kenkenken752"}
 
 
 class User(UserMixin):
@@ -82,9 +93,10 @@ def register():
             conn.close()
             return redirect(url_for("register"))
 
+        pw_hash = generate_password_hash(password)
         conn.execute(
             "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (username, password),
+            (username, pw_hash),
         )
         conn.commit()
         conn.close()
@@ -106,7 +118,7 @@ def login():
         ).fetchone()
         conn.close()
 
-        if row and row["password_hash"] == password:
+        if row and check_password_hash(row["password_hash"], password):
             user = User(row["id"], row["username"])
             login_user(user)
             return redirect(url_for("downloads"))
@@ -137,17 +149,35 @@ def downloads():
 @login_required
 def download_file(filename):
     try:
-        return send_from_directory(UPLOAD_DIR, filename, as_attachment=True)
+        response = send_from_directory(UPLOAD_DIR, filename, as_attachment=True)
     except FileNotFoundError:
         abort(404)
 
-@app.route("/debug-users")
-def debug_users():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM users").fetchall()
+    conn.execute(
+        "INSERT INTO download_logs (username, filename, downloaded_at) VALUES (?, ?, ?)",
+        (current_user.username, filename, datetime.now(timezone.utc).isoformat()),
+    )
+    conn.commit()
     conn.close()
-    return "<br>".join([f"{r['id']} | {r['username']} | {r['password_hash']}" for r in rows])
+
+    return response
+
+
+@app.route("/admin/logs")
+@login_required
+def admin_logs():
+    if current_user.username not in ADMIN_USERNAMES:
+        abort(403)
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT username, filename, downloaded_at FROM download_logs ORDER BY downloaded_at DESC"
+    ).fetchall()
+    conn.close()
+    return render_template("admin_logs.html", logs=rows)
 
 
 if __name__ == "__main__":
+    init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)

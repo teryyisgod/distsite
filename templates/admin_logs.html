@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}ダウンロード履歴{% endblock %}
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+    <h2 class="mb-4">ダウンロード履歴(管理者用)</h2>
+    {% if logs %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ユーザー名</th>
+                    <th>ファイル名</th>
+                    <th>日時(UTC)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log["username"] }}</td>
+                    <td>{{ log["filename"] }}</td>
+                    <td>{{ log["downloaded_at"] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-muted">まだダウンロード履歴はありません。</p>
+    {% endif %}
+</div>
+{% endblock %}
