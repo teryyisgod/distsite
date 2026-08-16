@@ -17,7 +17,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
-
+init_db()
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
