@@ -188,7 +188,7 @@ def admin_users():
 
     conn = get_db()
     rows = conn.execute(
-        "SELECT id, username FROM users ORDER BY id ASC"
+        "SELECT id, username, password_hash FROM users ORDER BY id ASC"
     ).fetchall()
     conn.close()
     return render_template("admin_users.html", users=rows)
