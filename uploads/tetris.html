@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>TETRIS</title>
+<style>
+  :root{
+    --bg:#0a0e17;
+    --panel:#131a2a;
+    --grid:#1d2740;
+    --line:#2a3654;
+    --accent:#5ef1ff;
+    --accent2:#ff5ec4;
+    --text:#dce6ff;
+    --dim:#5c6a8f;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;height:100%;
+    background:radial-gradient(circle at 20% 10%, #131c33 0%, #05070d 70%);
+    color:var(--text);
+    font-family:'Courier New', ui-monospace, monospace;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  .wrap{
+    display:flex;gap:28px;align-items:flex-start;
+    padding:20px;
+  }
+  .title{
+    font-size:13px;letter-spacing:6px;color:var(--accent);
+    margin:0 0 12px 2px;text-shadow:0 0 12px rgba(94,241,255,.6);
+  }
+  .board-frame{
+    position:relative;
+    padding:10px;
+    background:linear-gradient(160deg,var(--panel),#0d1220);
+    border:1px solid var(--line);
+    border-radius:10px;
+    box-shadow:0 0 0 1px rgba(94,241,255,.05), 0 20px 50px rgba(0,0,0,.6);
+  }
+  canvas{display:block;border-radius:4px;background:#080b14;}
+  #board{box-shadow:inset 0 0 30px rgba(0,0,0,.8);}
+  .side{
+    display:flex;flex-direction:column;gap:16px;width:150px;
+  }
+  .panel{
+    background:linear-gradient(160deg,var(--panel),#0d1220);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+  }
+  .panel h3{
+    margin:0 0 8px;font-size:10px;letter-spacing:3px;color:var(--dim);
+    font-weight:normal;text-transform:uppercase;
+  }
+  .stat{font-size:20px;color:var(--accent);text-shadow:0 0 8px rgba(94,241,255,.4);}
+  #next{display:block;margin:0 auto;background:#080b14;border-radius:4px;}
+  .keys{font-size:11px;line-height:1.9;color:var(--dim);}
+  .keys b{color:var(--text);}
+  .overlay{
+    position:absolute;inset:0;
+    background:rgba(5,7,13,.85);
+    display:none;
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;border-radius:8px;
+    backdrop-filter:blur(2px);
+  }
+  .overlay.show{display:flex;}
+  .overlay .big{
+    font-size:22px;letter-spacing:4px;color:var(--accent2);
+    text-shadow:0 0 16px rgba(255,94,196,.7);
+  }
+  .overlay .small{font-size:12px;color:var(--dim);letter-spacing:2px;}
+  .overlay.arrest{background:rgba(46,4,4,.92);}
+  .overlay.arrest .big{color:#ff4b4b;text-shadow:0 0 18px rgba(255,60,60,.85);animation:siren 0.6s infinite;}
+  @keyframes siren{
+    0%,100%{opacity:1;}
+    50%{opacity:0.55;}
+  }
+
+  .debt-bar{
+    display:flex;justify-content:space-between;align-items:center;
+    max-width:240px;
+    background:linear-gradient(160deg,var(--panel),#0d1220);
+    border:1px solid var(--line);border-radius:8px;
+    padding:6px 10px;margin-bottom:10px;
+    font-size:11px;letter-spacing:1px;color:var(--accent2);
+  }
+  .debt-bar.urgent{color:#ff4b4b;border-color:#ff4b4b;animation:siren 0.5s infinite;}
+  .debt-bar.cleared{color:#5eff9d;border-color:#5eff9d;justify-content:center;animation:none;}
+  .tc-btn.sell{color:#ffd76a;}
+  .tc-btn.buy{color:#5eff9d;}
+  button{
+    background:transparent;color:var(--accent);
+    border:1px solid var(--accent);border-radius:6px;
+    padding:8px 18px;font-family:inherit;font-size:12px;letter-spacing:3px;
+    cursor:pointer;margin-top:6px;
+  }
+  button:hover{background:rgba(94,241,255,.12);}
+  .pause-hint{position:absolute;top:8px;right:12px;font-size:10px;color:var(--dim);letter-spacing:2px;}
+  .sound-btn{
+    position:absolute;top:4px;left:8px;
+    background:none;border:none;color:var(--accent);
+    font-size:16px;padding:4px 6px;margin:0;cursor:pointer;
+    opacity:0.85;
+  }
+  .sound-btn.muted{color:var(--dim);text-decoration:line-through;}
+
+  /* touch controls */
+  .touch-controls{display:none;}
+  .tc-row{display:flex;gap:10px;justify-content:center;}
+  .tc-btn{
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;touch-action:manipulation;
+    background:linear-gradient(160deg,var(--panel),#0d1220);
+    border:1px solid var(--line);
+    color:var(--accent);
+    border-radius:12px;
+    font-family:inherit;
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+  }
+  .tc-btn:active{background:rgba(94,241,255,.18);}
+  .tc-btn.wide{font-size:11px;letter-spacing:2px;}
+
+  @media (max-width:720px){
+    html{height:100%;}
+    html,body{overflow:hidden;}
+    body{
+      height:100vh;
+      height:100dvh;
+      display:flex;
+      flex-direction:column;
+      align-items:stretch;
+      justify-content:flex-start;
+      padding:0;
+    }
+    .wrap{
+      flex:1 1 auto;
+      min-height:0;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+      flex-direction:column;align-items:center;
+      padding:8px;gap:8px;width:100%;
+    }
+    .title{text-align:center;font-size:14px;letter-spacing:5px;margin-bottom:2px;}
+    .debt-bar{max-width:480px;width:100%;font-size:12px;order:0;}
+    #debtBar{display:none;}
+    #debtBarMobile{margin-bottom:2px;}
+
+    /* stats row above the board, big and legible */
+    .side{
+      width:100%;max-width:480px;
+      flex-direction:row;flex-wrap:nowrap;gap:8px;
+      order:1;
+    }
+    .side .panel{flex:1 1 0;padding:8px 6px;text-align:center;}
+    .side .panel.keys{display:none;}
+    .panel h3{font-size:9px;letter-spacing:2px;margin-bottom:4px;}
+    .stat{font-size:18px;}
+
+    /* NEXT gets its own larger, prominent panel */
+    .panel:has(#next){flex:0 0 76px;}
+    #next{width:56px;height:56px;}
+
+    .board-frame{
+      order:2;
+      width:100%;max-width:340px;
+      display:flex;justify-content:center;
+      padding:6px;
+    }
+    #board{width:100%;height:auto;max-width:260px;}
+
+    /* static bottom bar: its own flex row in body, so it can never cover the board */
+    .touch-controls{
+      display:flex;flex-direction:column;gap:6px;
+      flex:0 0 auto;
+      width:100%;
+      background:linear-gradient(180deg, rgba(8,11,20,0) 0%, rgba(6,9,17,0.97) 22%);
+      padding:8px 10px calc(8px + env(safe-area-inset-bottom,0px));
+      box-shadow:0 -6px 20px rgba(0,0,0,.5);
+    }
+    .tc-btn{height:46px;flex:1;font-size:20px;border-radius:10px;}
+    .tc-btn.wide{font-size:12px;}
+    #tcRotate{flex:0 0 46px;border-radius:50%;}
+    #tcDown, #tcDrop, #tcSell, #tcBuy, #tcPause{flex:1;}
+  }
+
+  @media (max-width:380px){
+    .stat{font-size:16px;}
+    .panel h3{font-size:8px;}
+    #next{width:48px;height:48px;}
+    .tc-btn{height:42px;font-size:11px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <div class="title">TETRIS</div>
+    <div class="debt-bar" id="debtBar">
+      <span id="debtAmount">¥0 / ¥2000</span>
+      <span id="debtTimer">05:00</span>
+    </div>
+    <div class="board-frame">
+      <canvas id="board" width="240" height="480"></canvas>
+      <div class="pause-hint">P: PAUSE</div>
+      <button class="sound-btn" id="soundBtn" title="M: ミュート">♪</button>
+      <div class="overlay" id="overlay">
+        <div class="big" id="overlayText">GAME OVER</div>
+        <div class="small" id="overlaySub">Enter / タップで再スタート</div>
+        <button id="restartBtn">RESTART</button>
+      </div>
+    </div>
+  </div>
+  <div class="side">
+    <div class="panel">
+      <h3>NEXT</h3>
+      <canvas id="next" width="100" height="100"></canvas>
+    </div>
+    <div class="panel">
+      <h3>SCORE</h3>
+      <div class="stat" id="score">0</div>
+    </div>
+    <div class="panel">
+      <h3>LEVEL</h3>
+      <div class="stat" id="level">1</div>
+    </div>
+    <div class="panel">
+      <h3>LINES</h3>
+      <div class="stat" id="lines">0</div>
+    </div>
+    <div class="panel keys">
+      <div><b>← →</b> 移動</div>
+      <div><b>↑</b> 回転</div>
+      <div><b>↓</b> ソフトドロップ</div>
+      <div><b>Space</b> ハードドロップ</div>
+      <div><b>S</b> ミノを売る</div>
+      <div><b>B</b> ミノを買う</div>
+      <div><b>P</b> 一時停止</div>
+      <div><b>M</b> ミュート</div>
+    </div>
+  </div>
+</div>
+
+<div class="touch-controls" id="touchControls">
+  <div class="debt-bar" id="debtBarMobile">
+    <span id="debtAmountMobile">¥0 / ¥2000</span>
+    <span id="debtTimerMobile">05:00</span>
+  </div>
+  <div class="tc-row">
+    <button class="tc-btn" id="tcLeft">◀</button>
+    <button class="tc-btn" id="tcRotate">⟳</button>
+    <button class="tc-btn" id="tcRight">▶</button>
+  </div>
+  <div class="tc-row">
+    <button class="tc-btn wide" id="tcDown">SOFT</button>
+    <button class="tc-btn wide" id="tcDrop">HARD</button>
+  </div>
+  <div class="tc-row">
+    <button class="tc-btn wide sell" id="tcSell">売る</button>
+    <button class="tc-btn wide buy" id="tcBuy">買う</button>
+    <button class="tc-btn wide" id="tcPause">PAUSE</button>
+  </div>
+</div>
+
+<script>
+const COLS = 10, ROWS = 20, CELL = 24;
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('next');
+const nctx = nextCanvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const levelEl = document.getElementById('level');
+const linesEl = document.getElementById('lines');
+const overlay = document.getElementById('overlay');
+const overlayText = document.getElementById('overlayText');
+const overlaySub = document.getElementById('overlaySub');
+const restartBtn = document.getElementById('restartBtn');
+const soundBtn = document.getElementById('soundBtn');
+const debtBar = document.getElementById('debtBar');
+const debtAmountEl = document.getElementById('debtAmount');
+const debtTimerEl = document.getElementById('debtTimer');
+const debtBarMobile = document.getElementById('debtBarMobile');
+const debtAmountMobileEl = document.getElementById('debtAmountMobile');
+const debtTimerMobileEl = document.getElementById('debtTimerMobile');
+
+// ---- sound engine (synthesized, no external assets) ----
+const Sound = (()=>{
+  let ctx = null;
+  let muted = false;
+  function ensureCtx(){
+    if(!ctx){
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if(ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+  function tone(freq, dur, type='square', vol=0.15, delay=0, slideTo=null){
+    if(muted) return;
+    const c = ensureCtx();
+    const t0 = c.currentTime + delay;
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if(slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(1,slideTo), t0+dur);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0+0.008);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+    osc.connect(gain).connect(c.destination);
+    osc.start(t0);
+    osc.stop(t0+dur+0.02);
+  }
+  return {
+    move(){ tone(220, 0.04, 'square', 0.05); },
+    rotate(){ tone(420, 0.06, 'triangle', 0.08); },
+    softDrop(){ tone(180, 0.03, 'square', 0.05); },
+    hardDrop(){ tone(160, 0.12, 'sawtooth', 0.12, 0, 60); },
+    lock(){ tone(110, 0.08, 'square', 0.08); },
+    clear(count){
+      const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+      for(let i=0;i<count;i++){
+        tone(notes[Math.min(i,notes.length-1)], 0.14, 'triangle', 0.14, i*0.07);
+      }
+      if(count>=4) tone(1318.5, 0.25, 'triangle', 0.12, notes.length*0.07);
+    },
+    levelUp(){ tone(660,0.09,'triangle',0.1,0); tone(880,0.14,'triangle',0.1,0.09); },
+    gameOver(){
+      tone(392,0.15,'sawtooth',0.1,0);
+      tone(330,0.15,'sawtooth',0.1,0.15);
+      tone(262,0.3,'sawtooth',0.1,0.3);
+    },
+    dogBark(){
+      tone(700,0.06,'square',0.07,0);
+      tone(760,0.06,'square',0.07,0.1);
+    },
+    dogGrab(){
+      tone(150,0.08,'square',0.1,0);
+      tone(90,0.14,'sawtooth',0.1,0.05);
+    },
+    pawTap(){
+      tone(520,0.05,'square',0.09,0);
+      tone(310,0.08,'square',0.07,0.05);
+    },
+    buildingAppear(){
+      tone(220,0.1,'triangle',0.08,0);
+      tone(330,0.12,'triangle',0.08,0.1);
+    },
+    arrest(){
+      tone(880,0.15,'square',0.12,0);
+      tone(660,0.15,'square',0.12,0.15);
+      tone(880,0.15,'square',0.12,0.3);
+      tone(660,0.15,'square',0.12,0.45);
+    },
+    sell(){
+      tone(660,0.05,'triangle',0.1,0);
+      tone(990,0.08,'triangle',0.1,0.06);
+    },
+    buy(){
+      tone(440,0.05,'square',0.08,0);
+      tone(300,0.08,'square',0.06,0.05);
+    },
+    denied(){
+      tone(180,0.12,'sawtooth',0.09,0);
+    },
+    repaid(){
+      tone(523.25,0.12,'triangle',0.12,0);
+      tone(659.25,0.12,'triangle',0.12,0.1);
+      tone(783.99,0.12,'triangle',0.12,0.2);
+      tone(1046.5,0.25,'triangle',0.12,0.3);
+    },
+    debtDeath(){
+      tone(220,0.3,'sawtooth',0.12,0);
+      tone(150,0.3,'sawtooth',0.12,0.28);
+      tone(80,0.5,'sawtooth',0.12,0.56);
+    },
+    toggle(){
+      muted = !muted;
+      soundBtn.classList.toggle('muted', muted);
+      if(!muted) ensureCtx();
+      return muted;
+    },
+    unlock(){ ensureCtx(); }
+  };
+})();
+soundBtn.addEventListener('click', ()=> Sound.toggle());
+
+const COLORS = {
+  I: '#5ef1ff',
+  O: '#ffe45e',
+  T: '#c68cff',
+  S: '#5eff9d',
+  Z: '#ff5e6c',
+  J: '#5e8bff',
+  L: '#ff9d5e',
+  L2: '#ffb347',
+  BUILDING: '#9aa3b5'
+};
+
+const SHAPES = {
+  I: [[0,1],[1,1],[2,1],[3,1]],
+  O: [[1,0],[2,0],[1,1],[2,1]],
+  T: [[1,0],[0,1],[1,1],[2,1]],
+  S: [[1,0],[2,0],[0,1],[1,1]],
+  Z: [[0,0],[1,0],[1,1],[2,1]],
+  J: [[0,0],[0,1],[1,1],[2,1]],
+  L: [[2,0],[0,1],[1,1],[2,1]],
+  L2: [[3,0],[0,1],[1,1],[2,1],[3,1]] // extra-long L: 1/10 chance replaces I
+};
+
+function rotateCells(cells, times){
+  let c = cells;
+  for(let t=0;t<((times%4)+4)%4;t++){
+    // rotate around a 4x4 box (cx=cy=1.5)
+    c = c.map(([x,y])=>[3-y, x]);
+  }
+  return c;
+}
+
+const NORMAL_TYPES = ['I','O','T','S','Z','J','L'];
+
+function newPiece(){
+  let type = NORMAL_TYPES[Math.floor(Math.random()*NORMAL_TYPES.length)];
+  if(type === 'I' && Math.random() < 0.1){
+    type = 'L2';
+  }
+  return { type, rot:0, cells: SHAPES[type].slice(), x: 3, y: -1 };
+}
+
+function getCells(piece){
+  return rotateCells(SHAPES[piece.type], piece.rot).map(([x,y])=>[x+piece.x, y+piece.y]);
+}
+
+let grid, current, nextPiece, score, level, lines, dropTimer, dropInterval, gameOver, paused, animFrame, lastTime, clearing;
+let dogEvent, dogTimerAcc, dogNextTrigger;
+let pawEvent, pawTimerAcc, pawNextTrigger;
+let buildingTimerAcc, buildingNextTrigger;
+let money, debt, debtTimer, debtCleared, canSell, toast;
+const CLEAR_DURATION = 380;
+const DEBT_AMOUNT = 2000;
+const DEBT_TIME_LIMIT = 300000; // 5 minutes to repay
+const SELL_PRICE_PER_CELL = 20;
+const LINE_CLEAR_MONEY_PER_LINE = 25;
+const BUY_COST = 80;
+
+function randomDogDelay(){
+  return 12000 + Math.random()*18000; // 12–30s between visits
+}
+function randomPawDelay(){
+  return 15000 + Math.random()*20000; // 15–35s between paw pokes
+}
+function randomBuildingDelay(){
+  return 20000 + Math.random()*20000; // 20–40s between buildings
+}
+function lerp(a,b,t){ return a + (b-a) * Math.min(1, Math.max(0, t)); }
+
+function init(){
+  grid = Array.from({length:ROWS},()=>Array(COLS).fill(null));
+  score = 0; level = 1; lines = 0;
+  dropInterval = 800;
+  dropTimer = 0;
+  gameOver = false; paused = false; clearing = null;
+  dogEvent = null; dogTimerAcc = 0; dogNextTrigger = randomDogDelay();
+  pawEvent = null; pawTimerAcc = 0; pawNextTrigger = randomPawDelay();
+  buildingTimerAcc = 0; buildingNextTrigger = randomBuildingDelay();
+  money = 0; debt = DEBT_AMOUNT; debtTimer = DEBT_TIME_LIMIT; debtCleared = false;
+  canSell = true; toast = null;
+  debtBar.classList.remove('urgent','cleared');
+  debtBarMobile.classList.remove('urgent','cleared');
+  current = newPiece();
+  nextPiece = newPiece();
+  updateStats();
+  overlay.classList.remove('show', 'arrest');
+  lastTime = performance.now();
+  cancelAnimationFrame(animFrame);
+  animFrame = requestAnimationFrame(loop);
+}
+
+function updateStats(){
+  scoreEl.textContent = score;
+  levelEl.textContent = level;
+  linesEl.textContent = lines;
+  updateDebtUI();
+}
+
+function updateDebtUI(){
+  if(debtCleared){
+    const amountText = '¥' + money;
+    debtAmountEl.textContent = amountText;
+    debtAmountMobileEl.textContent = amountText;
+    debtTimerEl.textContent = '完済 🎉';
+    debtTimerMobileEl.textContent = '完済 🎉';
+    debtBar.classList.add('cleared');
+    debtBar.classList.remove('urgent');
+    debtBarMobile.classList.add('cleared');
+    debtBarMobile.classList.remove('urgent');
+    return;
+  }
+  const amountText = '¥' + money + ' / ¥' + debt;
+  debtAmountEl.textContent = amountText;
+  debtAmountMobileEl.textContent = amountText;
+  const secs = Math.max(0, Math.ceil(debtTimer/1000));
+  const mm = String(Math.floor(secs/60)).padStart(2,'0');
+  const ss = String(secs%60).padStart(2,'0');
+  const timeText = mm + ':' + ss;
+  debtTimerEl.textContent = timeText;
+  debtTimerMobileEl.textContent = timeText;
+  const urgent = debtTimer <= 15000;
+  debtBar.classList.toggle('urgent', urgent);
+  debtBarMobile.classList.toggle('urgent', urgent);
+}
+
+function collides(piece, dx, dy, rot){
+  const cells = rotateCells(SHAPES[piece.type], rot).map(([x,y])=>[x+piece.x+dx, y+piece.y+dy]);
+  for(const [x,y] of cells){
+    if(x<0||x>=COLS||y>=ROWS) return true;
+    if(y>=0 && grid[y][x]) return true;
+  }
+  return false;
+}
+
+function lockPiece(){
+  canSell = true;
+  const cells = getCells(current);
+  for(const [x,y] of cells){
+    if(y<0){ triggerGameOver(); return; }
+    grid[y][x] = current.type;
+  }
+  const full = [];
+  for(let y=0;y<ROWS;y++){
+    if(grid[y].every(c=>c)) full.push(y);
+  }
+  const fullSet = new Set(full);
+  for(const [x,y] of cells){
+    const belowY = y+1;
+    if(belowY < ROWS && grid[belowY][x] === 'BUILDING' && !fullSet.has(belowY)){
+      triggerArrest();
+      return;
+    }
+  }
+  if(full.length){
+    // start clear animation; hold the piece spawn until it finishes
+    clearing = { rows: full, timer: 0, duration: CLEAR_DURATION };
+    current = null;
+    Sound.clear(full.length);
+  } else {
+    Sound.lock();
+    spawnNext();
+  }
+}
+
+function spawnNext(){
+  current = nextPiece;
+  nextPiece = newPiece();
+  drawNext();
+  if(collides(current,0,0,current.rot)){
+    triggerGameOver();
+  }
+}
+
+function finalizeClear(){
+  if(dogEvent && !dogEvent.grabbed) dogEvent = null;
+  const rows = clearing.rows;
+  for(const y of rows){
+    grid.splice(y,1);
+    grid.unshift(Array(COLS).fill(null));
+  }
+  const cleared = rows.length;
+  const points = [0,100,300,500,800][cleared] * level;
+  score += points;
+  const lineMoney = cleared * LINE_CLEAR_MONEY_PER_LINE;
+  money += lineMoney;
+  lines += cleared;
+  const prevLevel = level;
+  level = 1 + Math.floor(lines/10);
+  dropInterval = Math.max(100, 800 - (level-1)*70);
+  updateStats();
+  if(level > prevLevel) Sound.levelUp();
+  showToast('+¥' + lineMoney + ' ライン報酬', '#5eff9d', 1000);
+  clearing = null;
+  spawnNext();
+}
+
+function floodFillSameType(sx, sy, type, maxSize){
+  const visited = new Set();
+  const stack = [[sx,sy]];
+  const result = [];
+  while(stack.length && result.length < maxSize){
+    const [x,y] = stack.pop();
+    const key = x+','+y;
+    if(visited.has(key)) continue;
+    visited.add(key);
+    if(x<0||x>=COLS||y<0||y>=ROWS) continue;
+    if(grid[y][x] !== type) continue;
+    result.push([x,y]);
+    stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+  }
+  return result;
+}
+
+function tryStartDogEvent(){
+  const filled = [];
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      if(grid[y][x] && grid[y][x] !== 'BUILDING') filled.push([x,y]);
+    }
+  }
+  if(filled.length < 4) return;
+  const [sx,sy] = filled[Math.floor(Math.random()*filled.length)];
+  const type = grid[sy][sx];
+  const cluster = floodFillSameType(sx, sy, type, 4);
+  if(!cluster.length) return;
+  const row = Math.round(cluster.reduce((s,c)=>s+c[1],0)/cluster.length);
+  const avgX = cluster.reduce((s,c)=>s+c[0],0)/cluster.length;
+  dogEvent = {
+    cells: cluster,
+    color: COLORS[type],
+    row,
+    x: -40,
+    startX: -40,
+    endX: canvas.width + 40,
+    targetX: (avgX + 0.5) * CELL,
+    duration: 2600,
+    elapsed: 0,
+    grabbed: false
+  };
+  Sound.dogBark();
+}
+
+function updateDog(delta){
+  if(!dogEvent) return;
+  dogEvent.elapsed += delta;
+  const t = Math.min(1, dogEvent.elapsed / dogEvent.duration);
+  dogEvent.x = dogEvent.startX + (dogEvent.endX - dogEvent.startX) * t;
+  if(!dogEvent.grabbed && dogEvent.x >= dogEvent.targetX){
+    dogEvent.grabbed = true;
+    for(const [x,y] of dogEvent.cells) grid[y][x] = null;
+    Sound.dogGrab();
+  }
+  if(dogEvent.elapsed >= dogEvent.duration){
+    dogEvent = null;
+  }
+}
+
+function tryStartPawEvent(){
+  const x = 30 + Math.random()*(canvas.width-60);
+  pawEvent = {
+    x,
+    y: canvas.height + 40,
+    startY: canvas.height + 40,
+    targetY: canvas.height - 70,
+    riseDur: 260,
+    holdDur: 140,
+    retreatDur: 320,
+    elapsed: 0,
+    triggered: false
+  };
+}
+
+function updatePaw(delta){
+  if(!pawEvent) return;
+  pawEvent.elapsed += delta;
+  const { riseDur, holdDur, retreatDur, startY, targetY } = pawEvent;
+  const e = pawEvent.elapsed;
+  if(e < riseDur){
+    pawEvent.y = lerp(startY, targetY, e/riseDur);
+  } else if(e < riseDur+holdDur){
+    pawEvent.y = targetY;
+    if(!pawEvent.triggered){
+      pawEvent.triggered = true;
+      Sound.pawTap();
+      hardDrop();
+    }
+  } else if(e < riseDur+holdDur+retreatDur){
+    const te = e - (riseDur+holdDur);
+    pawEvent.y = lerp(targetY, startY, te/retreatDur);
+  } else {
+    pawEvent = null;
+  }
+}
+
+function showToast(text, color, duration){
+  toast = { text, color: color || '#5ef1ff', elapsed: 0, duration: duration || 1100 };
+}
+
+function updateToast(delta){
+  if(!toast) return;
+  toast.elapsed += delta;
+  if(toast.elapsed >= toast.duration) toast = null;
+}
+
+function trySpawnBuilding(){
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      if(grid[y][x] === 'BUILDING') return; // only one on the board at a time
+    }
+  }
+  const currentCols = current ? new Set(getCells(current).map(([x])=>x)) : new Set();
+  const candidates = [];
+  for(let x=0;x<COLS;x++){
+    if(currentCols.has(x)) continue;
+    let top = ROWS;
+    for(let y=0;y<ROWS;y++){
+      if(grid[y][x]){ top = y; break; }
+    }
+    if(top === ROWS) continue; // needs an existing stack to stand on
+    const placeRow = top - 1;
+    if(placeRow >= 0 && !grid[placeRow][x]) candidates.push([x, placeRow]);
+  }
+  if(!candidates.length) return;
+  const [bx, by] = candidates[Math.floor(Math.random()*candidates.length)];
+  grid[by][bx] = 'BUILDING';
+  Sound.buildingAppear();
+}
+
+function sellCurrentPiece(){
+  if(!current || clearing || gameOver || paused) return;
+  if(!canSell){
+    showToast('連続では売れない！', '#ff5e6c', 900);
+    Sound.denied();
+    return;
+  }
+  const value = getCells(current).length * SELL_PRICE_PER_CELL;
+  money += value;
+  canSell = false;
+  Sound.sell();
+  showToast('+¥' + value + ' 売却', '#ffe45e', 1000);
+  current = nextPiece;
+  nextPiece = newPiece();
+  drawNext();
+  updateStats();
+  if(collides(current,0,0,current.rot)) triggerGameOver();
+}
+
+function buyNewPiece(){
+  if(!current || clearing || gameOver || paused) return;
+  if(money < BUY_COST){
+    showToast('資金不足...', '#ff5e6c', 900);
+    Sound.denied();
+    return;
+  }
+  money -= BUY_COST;
+  current = newPiece();
+  Sound.buy();
+  showToast('-¥' + BUY_COST + ' 購入', '#5ef1ff', 1000);
+  updateStats();
+  if(collides(current,0,0,current.rot)) triggerGameOver();
+}
+
+function triggerDebtDeath(){
+  gameOver = true;
+  clearing = null;
+  current = null;
+  Sound.debtDeath();
+  overlayText.textContent = '💀 借金回収 💀';
+  overlaySub.textContent = '返済期限切れ — スコア: ' + score;
+  overlay.classList.add('show', 'arrest');
+}
+
+function triggerArrest(){
+  gameOver = true;
+  clearing = null;
+  current = null;
+  Sound.arrest();
+  overlayText.textContent = '🚨 逮捕 🚨';
+  overlaySub.textContent = '建物を潰した容疑で連行されました — スコア: ' + score;
+  overlay.classList.add('show', 'arrest');
+}
+
+function triggerGameOver(){
+  gameOver = true;
+  Sound.gameOver();
+  overlayText.textContent = 'GAME OVER';
+  overlaySub.textContent = 'スコア: ' + score;
+  overlay.classList.add('show');
+}
+
+function hardDrop(){
+  if(!current || clearing) return;
+  let dy = 0;
+  while(!collides(current, 0, dy+1, current.rot)) dy++;
+  current.y += dy;
+  score += dy*2;
+  Sound.hardDrop();
+  lockPiece();
+  updateStats();
+  dropTimer = 0;
+}
+
+function move(dx){
+  if(!current || clearing) return;
+  if(!collides(current, dx, 0, current.rot)){ current.x += dx; Sound.move(); }
+}
+
+function softDrop(){
+  if(!current || clearing) return;
+  if(!collides(current, 0, 1, current.rot)){
+    current.y += 1;
+    score += 1;
+    Sound.softDrop();
+    updateStats();
+  } else {
+    lockPiece();
+  }
+  dropTimer = 0;
+}
+
+function rotate(){
+  if(!current || clearing) return;
+  const newRot = (current.rot+1)%4;
+  const kicks = [0,-1,1,-2,2];
+  for(const k of kicks){
+    if(!collides(current, k, 0, newRot)){
+      current.rot = newRot;
+      current.x += k;
+      Sound.rotate();
+      return;
+    }
+  }
+}
+
+function drawBuildingCell(x, y){
+  const px = x*CELL, py = y*CELL;
+  ctx.save();
+  ctx.fillStyle = '#3d4457';
+  ctx.fillRect(px+2, py+2, CELL-4, CELL-4);
+  ctx.strokeStyle = '#7a869e';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(px+2, py+2, CELL-4, CELL-4);
+  ctx.fillStyle = '#ffd76a';
+  const w = 4;
+  ctx.fillRect(px+5, py+5, w, w);
+  ctx.fillRect(px+CELL-9, py+5, w, w);
+  ctx.fillRect(px+5, py+CELL-9, w, w);
+  ctx.fillRect(px+CELL-9, py+CELL-9, w, w);
+  ctx.restore();
+}
+
+function drawCell(c, x, y, color, size){
+  c.fillStyle = color;
+  c.fillRect(x*size, y*size, size, size);
+  c.strokeStyle = 'rgba(0,0,0,0.35)';
+  c.lineWidth = 2;
+  c.strokeRect(x*size+1, y*size+1, size-2, size-2);
+  c.fillStyle = 'rgba(255,255,255,0.18)';
+  c.fillRect(x*size, y*size, size, size*0.28);
+}
+
+function draw(){
+  ctx.fillStyle = '#080b14';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // grid lines
+  ctx.strokeStyle = 'rgba(94,241,255,0.05)';
+  ctx.lineWidth = 1;
+  for(let x=0;x<=COLS;x++){
+    ctx.beginPath(); ctx.moveTo(x*CELL,0); ctx.lineTo(x*CELL,ROWS*CELL); ctx.stroke();
+  }
+  for(let y=0;y<=ROWS;y++){
+    ctx.beginPath(); ctx.moveTo(0,y*CELL); ctx.lineTo(COLS*CELL,y*CELL); ctx.stroke();
+  }
+
+  const clearRowSet = clearing ? new Set(clearing.rows) : null;
+  const progress = clearing ? Math.min(1, clearing.timer / clearing.duration) : 0;
+
+  // locked cells
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const cellType = grid[y][x];
+      if(!cellType) continue;
+      if(clearRowSet && clearRowSet.has(y)){
+        drawClearingCell(x, y, COLORS[cellType], progress);
+      } else if(cellType === 'BUILDING'){
+        drawBuildingCell(x, y);
+      } else {
+        drawCell(ctx, x, y, COLORS[cellType], CELL);
+      }
+    }
+  }
+
+  if(current){
+    // ghost piece
+    let ghostY = 0;
+    while(!collides(current, 0, ghostY+1, current.rot)) ghostY++;
+    const ghostCells = rotateCells(SHAPES[current.type], current.rot).map(([x,y])=>[x+current.x, y+current.y+ghostY]);
+    ctx.globalAlpha = 0.25;
+    for(const [x,y] of ghostCells){
+      if(y>=0) drawCell(ctx, x, y, COLORS[current.type], CELL);
+    }
+    ctx.globalAlpha = 1;
+
+    // current piece
+    const cells = getCells(current);
+    for(const [x,y] of cells){
+      if(y>=0) drawCell(ctx, x, y, COLORS[current.type], CELL);
+    }
+  }
+
+  drawDog();
+  drawPaw();
+  drawToast();
+}
+
+function drawToast(){
+  if(!toast) return;
+  const t = toast.elapsed / toast.duration;
+  const alpha = t < 0.15 ? t/0.15 : Math.max(0, 1 - Math.max(0,(t-0.7))/0.3);
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  ctx.fillStyle = toast.color;
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 4;
+  ctx.fillText(toast.text, canvas.width/2, 6);
+  ctx.restore();
+}
+
+function drawPaw(){
+  if(!pawEvent) return;
+  const {x,y} = pawEvent;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle = '#caa07a';
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 1.5;
+  const toeOffsets = [[-13,-10],[-5,-17],[5,-17],[13,-10]];
+  for(const [ox,oy] of toeOffsets){
+    ctx.beginPath();
+    ctx.ellipse(ox,oy,6,7,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.ellipse(0,8,16,13,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawDog(){
+  if(!dogEvent) return;
+  const y = dogEvent.row * CELL + CELL/2;
+  ctx.save();
+  ctx.font = '28px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🐕', dogEvent.x, y);
+  if(dogEvent.grabbed){
+    const bx = dogEvent.x - 17;
+    const by = y - 12 + Math.sin(dogEvent.elapsed/80)*2;
+    ctx.fillStyle = dogEvent.color;
+    ctx.fillRect(bx-5, by-5, 10, 10);
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx-5, by-5, 10, 10);
+  }
+  ctx.restore();
+}
+
+function drawClearingCell(x, y, color, progress){
+  // quick white flash, then the block shrinks away toward its center
+  const flash = Math.max(0, 1 - progress*2.2);
+  const scale = Math.max(0, 1 - Math.pow(progress, 1.6));
+  const size = CELL * scale;
+  const off = (CELL - size) / 2;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0.15, 1 - progress*0.5);
+  ctx.fillStyle = color;
+  ctx.fillRect(x*CELL+off, y*CELL+off, size, size);
+  if(flash > 0){
+    ctx.globalAlpha = flash;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x*CELL+off, y*CELL+off, size, size);
+  }
+  ctx.restore();
+}
+
+function drawNext(){
+  nctx.fillStyle = '#080b14';
+  nctx.fillRect(0,0,nextCanvas.width,nextCanvas.height);
+  const size = 20;
+  const cells = SHAPES[nextPiece.type];
+  const maxX = Math.max(...cells.map(c=>c[0]));
+  const maxY = Math.max(...cells.map(c=>c[1]));
+  const offX = (nextCanvas.width - (maxX+1)*size)/2;
+  const offY = (nextCanvas.height - (maxY+1)*size)/2;
+  for(const [x,y] of cells){
+    nctx.fillStyle = COLORS[nextPiece.type];
+    nctx.fillRect(offX+x*size, offY+y*size, size, size);
+    nctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    nctx.strokeRect(offX+x*size+1, offY+y*size+1, size-2, size-2);
+  }
+}
+
+function loop(t){
+  animFrame = requestAnimationFrame(loop);
+  if(gameOver || paused) return;
+  const delta = t - lastTime;
+  lastTime = t;
+
+  updateDog(delta);
+  dogTimerAcc += delta;
+  if(!dogEvent && !pawEvent && !clearing && dogTimerAcc >= dogNextTrigger){
+    tryStartDogEvent();
+    dogTimerAcc = 0;
+    dogNextTrigger = randomDogDelay();
+  }
+
+  updatePaw(delta);
+  pawTimerAcc += delta;
+  if(!pawEvent && !dogEvent && !clearing && current && pawTimerAcc >= pawNextTrigger){
+    tryStartPawEvent();
+    pawTimerAcc = 0;
+    pawNextTrigger = randomPawDelay();
+  }
+
+  buildingTimerAcc += delta;
+  if(!clearing && buildingTimerAcc >= buildingNextTrigger){
+    trySpawnBuilding();
+    buildingTimerAcc = 0;
+    buildingNextTrigger = randomBuildingDelay();
+  }
+
+  updateToast(delta);
+
+  if(!debtCleared){
+    if(money >= debt){
+      debtCleared = true;
+      showToast('借金完済！🎉', '#5eff9d', 1800);
+      Sound.repaid();
+    } else {
+      debtTimer -= delta;
+      if(debtTimer <= 0){
+        debtTimer = 0;
+        updateDebtUI();
+        triggerDebtDeath();
+        draw();
+        return;
+      }
+    }
+  }
+  updateDebtUI();
+
+  if(clearing){
+    clearing.timer += delta;
+    if(clearing.timer >= clearing.duration){
+      finalizeClear();
+    }
+    draw();
+    return;
+  }
+
+  dropTimer += delta;
+  if(dropTimer > dropInterval){
+    if(!collides(current,0,1,current.rot)){
+      current.y += 1;
+    } else {
+      lockPiece();
+      updateStats();
+    }
+    dropTimer = 0;
+  }
+  draw();
+}
+
+function togglePause(){
+  if(gameOver) return;
+  paused = !paused;
+  if(paused){
+    overlayText.textContent = 'PAUSED';
+    overlaySub.textContent = 'P で再開';
+    overlay.classList.add('show');
+  } else {
+    overlay.classList.remove('show');
+    lastTime = performance.now();
+  }
+}
+
+document.addEventListener('keydown', (e)=>{
+  Sound.unlock();
+  if(gameOver && e.key === 'Enter'){ init(); return; }
+  if(e.key === 'p' || e.key === 'P'){ togglePause(); return; }
+  if(e.key === 'm' || e.key === 'M'){ Sound.toggle(); return; }
+  if(gameOver || paused) return;
+  switch(e.key){
+    case 'ArrowLeft': move(-1); draw(); break;
+    case 'ArrowRight': move(1); draw(); break;
+    case 'ArrowDown': softDrop(); draw(); break;
+    case 'ArrowUp': rotate(); draw(); break;
+    case ' ': e.preventDefault(); hardDrop(); draw(); break;
+    case 's': case 'S': sellCurrentPiece(); draw(); break;
+    case 'b': case 'B': buyNewPiece(); draw(); break;
+  }
+});
+document.addEventListener('touchstart', ()=> Sound.unlock(), {once:true, passive:true});
+
+restartBtn.addEventListener('click', init);
+
+// simple touch controls on the board itself: swipe left/right/down, tap to rotate
+let touchStartX=null, touchStartY=null, touchTime=0;
+canvas.addEventListener('touchstart', (e)=>{
+  const t = e.touches[0];
+  touchStartX = t.clientX; touchStartY = t.clientY; touchTime = Date.now();
+});
+canvas.addEventListener('touchend', (e)=>{
+  if(gameOver || paused || touchStartX===null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  const dt = Date.now() - touchTime;
+  if(Math.abs(dx) < 15 && Math.abs(dy) < 15 && dt < 250){
+    rotate();
+  } else if(Math.abs(dx) > Math.abs(dy)){
+    move(dx>0 ? 1 : -1);
+  } else if(dy > 40){
+    if(dt < 200) hardDrop(); else softDrop();
+  }
+  draw();
+  touchStartX = null;
+});
+
+// on-screen button controls (primary mobile UI)
+function bindHoldButton(el, action, repeatDelay=140, initialDelay=250){
+  let holdTimer=null, repeatTimer=null;
+  function start(e){
+    e.preventDefault();
+    if(gameOver || paused) return;
+    action();
+    draw();
+    holdTimer = setTimeout(()=>{
+      repeatTimer = setInterval(()=>{
+        if(gameOver || paused) return;
+        action();
+        draw();
+      }, repeatDelay);
+    }, initialDelay);
+  }
+  function stop(e){
+    if(e) e.preventDefault();
+    clearTimeout(holdTimer);
+    clearInterval(repeatTimer);
+  }
+  el.addEventListener('touchstart', start, {passive:false});
+  el.addEventListener('touchend', stop);
+  el.addEventListener('touchcancel', stop);
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', stop);
+  el.addEventListener('mouseleave', stop);
+}
+
+function bindTapButton(el, action){
+  el.addEventListener('touchstart', (e)=>{
+    e.preventDefault();
+    if(gameOver && el.id!=='tcPause'){ return; }
+    if(paused && el.id!=='tcPause') return;
+    action();
+    draw();
+  }, {passive:false});
+  el.addEventListener('click', ()=>{
+    if(paused && el.id!=='tcPause') return;
+    action();
+    draw();
+  });
+}
+
+bindHoldButton(document.getElementById('tcLeft'), ()=>move(-1));
+bindHoldButton(document.getElementById('tcRight'), ()=>move(1));
+bindHoldButton(document.getElementById('tcDown'), softDrop);
+bindTapButton(document.getElementById('tcRotate'), rotate);
+bindTapButton(document.getElementById('tcDrop'), hardDrop);
+bindTapButton(document.getElementById('tcSell'), sellCurrentPiece);
+bindTapButton(document.getElementById('tcBuy'), buyNewPiece);
+document.getElementById('tcPause').addEventListener('click', togglePause);
+document.getElementById('tcPause').addEventListener('touchstart', (e)=>{ e.preventDefault(); togglePause(); }, {passive:false});
+
+// prevent page scroll only during an active swipe gesture on the canvas itself
+document.addEventListener('touchmove', (e)=>{
+  if(touchStartX !== null && e.target === canvas) e.preventDefault();
+}, {passive:false});
+
+init();
+</script>
+</body>
+</html>
