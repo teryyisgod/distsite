@@ -5,19 +5,17 @@ from flask_login import (
     LoginManager, UserMixin, login_user, login_required,
     logout_user, current_user
 )
-from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "site.db")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
 app = Flask(__name__)
-# 本番では環境変数から読むこと。ローカル確認用の仮の値。
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
-init_db()
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -36,6 +34,9 @@ def init_db():
     """)
     conn.commit()
     conn.close()
+
+
+init_db()
 
 
 class User(UserMixin):
@@ -142,5 +143,4 @@ def download_file(filename):
 
 
 if __name__ == "__main__":
-    init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)
