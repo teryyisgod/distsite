@@ -95,10 +95,9 @@ def register():
             conn.close()
             return redirect(url_for("register"))
 
-        pw_hash = generate_password_hash(password)
         conn.execute(
             "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-            (username, pw_hash),
+            (username, password),
         )
         conn.commit()
         conn.close()
@@ -120,7 +119,7 @@ def login():
         ).fetchone()
         conn.close()
 
-        if row and check_password_hash(row["password_hash"], password):
+        if row and row["password_hash"] == password:
             user = User(row["id"], row["username"])
             login_user(user)
             return redirect(url_for("downloads"))
