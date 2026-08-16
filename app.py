@@ -146,7 +146,7 @@ def debug_users():
     conn = get_db()
     rows = conn.execute("SELECT * FROM users").fetchall()
     conn.close()
-    return "<br>".join([f"{r['id']} | {r['username']} | {r['password']}" for r in rows])
+    return "<br>".join([f"{r['id']} | {r['username']} | {r['password_hash']}" for r in rows])
 
 
 if __name__ == "__main__":
