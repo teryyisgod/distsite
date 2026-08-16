@@ -177,6 +177,19 @@ def admin_logs():
     conn.close()
     return render_template("admin_logs.html", logs=rows)
 
+@app.route("/admin/users")
+@login_required
+def admin_users():
+    if current_user.username not in ADMIN_USERNAMES:
+        abort(403)
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, username FROM users ORDER BY id ASC"
+    ).fetchall()
+    conn.close()
+    return render_template("admin_users.html", users=rows)
+
 
 if __name__ == "__main__":
     init_db()
