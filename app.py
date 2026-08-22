@@ -76,7 +76,7 @@ def send_verification_email(to_email, token):
         server.login(MAIL_USERNAME, MAIL_PASSWORD)
         server.send_message(msg)
 
-ADMIN_USERNAMES = {"kensinmukaedao@gmail.com
+ADMIN_USERNAMES = {"kensinmukaedao@gmail.com"}
 
 class User(UserMixin):
     def __init__(self, id, username):
